@@ -2,6 +2,7 @@ import subprocess
 import json
 import logging
 from typing import List, Dict, Optional
+import base64
 
 class MultipassManager:
     """Gestore per operazioni Multipass"""
@@ -135,9 +136,13 @@ class MultipassManager:
                 self.logger.error(f"Errore nella creazione dell'istanza {name}: {result.stderr}")
                 return False
 
-            
-
             self.logger.info(f"Istanza {name} creata con successo")
+
+            result = self.set_netplan_static_ip(name)
+            if not result:
+                self.logger.error(f"Errore nella configurazione dell'IP statico per l'istanza {name}")
+                return False
+
             return True
                 
         except subprocess.TimeoutExpired:
@@ -145,4 +150,92 @@ class MultipassManager:
             return False
         except Exception as e:
             self.logger.error(f"Errore nella creazione dell'istanza {name}: {e}")
+            return False
+        
+    def set_netplan_static_ip(self, node_name: str) -> bool:
+        """Configura un IP statico tramite netplan su un'istanza Multipass"""
+        
+        try:
+            # Rileva interfaccia, IP/CIDR e gateway dalla VM
+            iface = self.execute_cmd_with_output(node_name,
+                ["bash", "-lc", "ip route get 1.1.1.1 | awk '{print $5}' | head -n1"],
+                silent=True,
+            )
+            if not iface:
+                self.logger.error("Impossibile rilevare l'interfaccia di rete")
+                return False
+            
+            iface = iface.strip()
+
+            ip_cidr = self.execute_cmd_with_output(
+                node_name,
+                ["bash", "-lc", f"ip -o -4 addr show dev {iface} | awk '{{print $4}}' | head -n1"],
+                silent=True,
+            )
+            if not ip_cidr:
+                self.logger.error("Impossibile rilevare l'IP della VM")
+                return False
+            
+            ip_cidr = ip_cidr.strip()
+
+            gateway = self.execute_cmd_with_output(
+                node_name,
+                ["bash", "-lc", "ip route | awk '/^default/ {print $3; exit}'"],
+                silent=True,
+            )
+            if not gateway:
+                self.logger.error("Impossibile rilevare il gateway della VM")
+                return False
+            
+            gateway = gateway.strip()
+
+            # Contenuto netplan
+            yaml_content = f"""
+            network:
+              version: 2
+              ethernets:
+                {iface}:
+                  dhcp4: false
+                  addresses:
+                    - {ip_cidr}
+                  routes:
+                    - to: 0.0.0.0/0
+                      via: {gateway}
+                  nameservers:
+                    addresses:
+                      - 8.8.8.8
+                      - 8.8.4.4
+    """
+
+            # Backup e scrittura file
+            self.execute_cmd_with_output(
+                node_name,
+                ["bash", "-lc", "sudo cp -f /etc/netplan/50-cloud-init.yaml /etc/netplan/50-cloud-init.yaml.bak 2>/dev/null || true"],
+                silent=True,
+            )
+
+            b64 = base64.b64encode(yaml_content.encode("utf-8")).decode("ascii")
+            write_res = self.execute_cmd_with_output(
+                node_name,
+                ["bash", "-lc", f"echo '{b64}' | base64 -d | sudo tee /etc/netplan/50-cloud-init.yaml >/dev/null"],
+             silent=True,
+            )
+            if write_res is None:
+                self.logger.error("Errore nella scrittura del file netplan")
+                return False
+
+            # Applica netplan
+            apply_res = self.execute_cmd_with_output(
+                node_name,
+                ["bash", "-lc", "sudo netplan apply >/dev/null 2>&1 || echo FAIL"],
+                silent=True,
+            )
+            if apply_res and "FAIL" in apply_res:
+                self.logger.error("Errore nell'applicazione di netplan")
+                return False
+
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Errore nella configurazione IP statica: {e}")
             return False
