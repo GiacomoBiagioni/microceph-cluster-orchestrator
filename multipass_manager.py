@@ -72,12 +72,12 @@ class MultipassManager:
             self.logger.error(f"Errore nel recuperare il token per {main_vm_name}: {e}")
             return None
 
-    def execute_command(self, command: List[str]) -> bool:
+    def execute_command(self, command: List[str], silent: bool = False) -> bool:
         """Esegue un comando Multipass"""
         try:
-            result = subprocess.run(command, capture_output=True, text=True, timeout=120)
+            result = subprocess.run(command, capture_output=True, text=True, timeout=240)
             if result.returncode == 0:
-                if self._is_debug:
+                if not silent and self._is_debug:
                     self.logger.info(f"Comando eseguito con successo: {' '.join(command)}")
                 return True
             else:
@@ -92,7 +92,7 @@ class MultipassManager:
         full_command = ["multipass", "exec", instance_name, "--"] + cmd
 
         try:
-            result = subprocess.run(full_command, capture_output=True, text=True, timeout=120)
+            result = subprocess.run(full_command, capture_output=True, text=True, timeout=240)
             if result.returncode == 0:
                 if not silent and self._is_debug:
                     self.logger.info(f"Comando eseguito con successo: {' '.join(full_command)}")
