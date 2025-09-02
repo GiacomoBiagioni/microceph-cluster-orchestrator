@@ -20,7 +20,10 @@ cd microceph-cluster-orchestrator
 
 2) Installa Multipass (se serve)
 - Windows: [Download](https://canonical.com/multipass/install)
-- Ubuntu/Debian: sudo snap install multipass
+- Ubuntu/Debian:
+   ```bash
+   sudo snap install multipass
+   ```
 
 
 ## Utilizzo
