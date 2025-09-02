@@ -1,0 +1,18 @@
+#cloud-config
+package_reboot_if_required: true
+package_update: true
+package_upgrade: true
+
+packages:
+  - samba
+
+runcmd:
+  # Crea la directory per la mount
+  - mkdir -p /mnt/cephfs
+  
+  # Avvia e abilita Samba
+  - systemctl enable smbd
+  - systemctl start smbd
+  
+  # Configura il firewall per Samba (opzionale)
+  # - ufw allow samba

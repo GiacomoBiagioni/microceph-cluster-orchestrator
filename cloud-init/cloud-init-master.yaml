@@ -1,0 +1,17 @@
+#cloud-config
+package_reboot_if_required: true
+package_update: true
+package_upgrade: true
+
+packages:
+  - samba
+  - ceph-fuse
+  - snap:
+    - microceph
+
+runcmd:
+  # Disabilita gli aggiornamenti automatici di MicroCeph
+  - snap refresh --hold microceph
+
+  # Abilita e inizializza MicroCeph come nodo primario
+  - microceph cluster bootstrap
