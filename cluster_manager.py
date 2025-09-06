@@ -2,6 +2,7 @@ from configs import NodesCreationConfig
 from multipass_manager import MultipassManager
 from managers.fs_manager import FSManager
 import logging
+import re
 
 class ClusterManager:
     PRIMARY_NODE_NAME = "ceph-node-1"
@@ -58,11 +59,11 @@ class ClusterManager:
         print("\n=== Configurazione Cluster Ceph ===")
         print("Inserisci i parametri per il setup (premi Enter per usare il valore di default):\n")
         
-        # Numero di nodi (default: 3)
+        # Numero di nodi (default: 2)
         while True:
-            node_count_input = input("Numero di nodi [3]: ").strip()
+            node_count_input = input("Numero di nodi [2]: ").strip()
             if not node_count_input:
-                node_count = 3
+                node_count = 2
                 break
             try:
                 node_count = int(node_count_input)
@@ -94,18 +95,32 @@ class ClusterManager:
                 print("Inserisci un numero valido")
         
         # RAM (default: 2G)
-        ram_input = input("Quantità di RAM per nodo [2G]: ").strip()
-        if not ram_input:
-            memory = "2G"
-        else:
-            memory = ram_input
-        
+        # RAM (default: 2G)
+        while True:
+            ram_input = input("Quantità di RAM per nodo [2G]: ").strip()
+            if not ram_input:
+                memory = "2G"
+                break
+            
+            # Verifica formato: numero positivo, opzionale K/M/G
+            if re.fullmatch(r"\d+([KMG])?", ram_input, re.IGNORECASE):
+                memory = ram_input.upper()
+                break
+            else:
+                print("Inserisci una quantità valida (es: 2048, 2G, 512M, 4096K)")
+
         # Dimensione disco (default: 10G)
-        disk_input = input("Dimensione disco per nodo [10G]: ").strip()
-        if not disk_input:
-            disk = "10G"
-        else:
-            disk = disk_input
+        while True:
+            disk_input = input("Dimensione disco per nodo [10G]: ").strip()
+            if not disk_input:
+                disk = "10G"
+                break
+            
+            if re.fullmatch(r"\d+([KMG])?", disk_input, re.IGNORECASE):
+                disk = disk_input.upper()
+                break
+            else:
+                print("Inserisci una dimensione valida (es: 10240, 10G, 512M, 4096K)")
         
         # Sistema operativo (default: 22.04)
         image_input = input("Sistema operativo [22.04 (Ubuntu)]: ").strip()
