@@ -24,7 +24,7 @@ Esempi di utilizzo:
     # Comando setup
     deploy_parser = subparsers.add_parser('deploy', help='Deploy completo del cluster')
     deploy_parser.add_argument('--nodes', type=int, default=None, 
-                              help='Numero di nodi del cluster (default: 3)')
+                              help='Numero di nodi del cluster (default: 2)')
     deploy_parser.add_argument('--base-name', type=str, default=None,
                               help='Nome base per i nodi (default: ceph-node)')
     deploy_parser.add_argument('--cpus', type=int, default=None,
